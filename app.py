@@ -3,23 +3,36 @@ import uuid
 import streamlit as st
 from google.cloud import dialogflow_v2 as dialogflow
 from google.oauth2 import service_account
+import google.auth
 from datetime import datetime
 import time
 
+# === Authentication ===
+# Load credentials from Streamlit secrets > env var path > Application Default
+import json
 
-# Automatically pick up a Dialogflow service account JSON in the working folder
-KEY_FILE = next((f for f in os.listdir() if f.endswith('.json')), None)
-if not KEY_FILE:
-    raise FileNotFoundError("No service account JSON file found in the working directory.")
+def get_credentials():
+    # 1) Streamlit secrets: JSON object stored under 'dialogflow'
+    if 'dialogflow' in st.secrets:
+        info = st.secrets['dialogflow']
+        return service_account.Credentials.from_service_account_info(info)
+    # 2) Explicit JSON file via env var
+    key_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if key_file and os.path.isfile(key_file):
+        return service_account.Credentials.from_service_account_file(key_file)
+    # 3) Fallback to Application Default Credentials
+    creds, _ = google.auth.default()
+    return creds
+
+# Compute once
+CREDENTIALS = get_credentials()
 
 # Force the Dialogflow project ID where your agent is deployed
 PROJECT_ID = "newagent-urrr"
 LANGUAGE_CODE = "pt-BR"
 
 def detect_intent_text(text: str, session_id: str) -> tuple[str, str]:
-    # Uses service account JSON for authentication
-    credentials = service_account.Credentials.from_service_account_file(KEY_FILE)
-    session_client = dialogflow.SessionsClient(credentials=credentials)
+    session_client = dialogflow.SessionsClient(credentials=CREDENTIALS)
     session = session_client.session_path(PROJECT_ID, session_id)
 
     text_input = dialogflow.TextInput(text=text, language_code=LANGUAGE_CODE)
