@@ -1,26 +1,16 @@
-import os
-import uuid
-import streamlit as st
-from google.cloud import dialogflow_v2 as dialogflow
+import os, json
 from google.oauth2 import service_account
-import google.auth
-from datetime import datetime
-import time
-
-# === Authentication ===
-# Load credentials from Streamlit secrets > env var path > Application Default
-import json
 
 def get_credentials():
-    # 1) Streamlit secrets: JSON object stored under 'dialogflow'
-    if 'dialogflow' in st.secrets:
-        info = st.secrets['dialogflow']
+    # 1) via Streamlit secrets
+    if 'DIALOGFLOW_SERVICE_ACCOUNT' in st.secrets:
+        info = json.loads(st.secrets['DIALOGFLOW_SERVICE_ACCOUNT'])
         return service_account.Credentials.from_service_account_info(info)
-    # 2) Explicit JSON file via env var
+    # 2) via env var (falha segura)
     key_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-    if key_file and os.path.isfile(key_file):
+    if key_file:
         return service_account.Credentials.from_service_account_file(key_file)
-    # 3) Fallback to Application Default Credentials
+    # 3) fallback
     creds, _ = google.auth.default()
     return creds
 
